@@ -1,0 +1,16 @@
+# Node/React
+node_modules/
+dist/
+.env
+
+# Go
+bin/
+primordia-bin
+
+# OpenClaw/AI Local Cache (Crucial for your 3090 setup)
+.openclaw/cache/
+.openclaw/logs/
+*.log
+
+# OS
+.DS_Store
