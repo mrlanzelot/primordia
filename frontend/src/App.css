@@ -1,0 +1,49 @@
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at 20% 20%, #12211f, #070a09 45%, #020202 100%);
+  overflow: hidden;
+}
+
+.overlay {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  color: #f2f8f4;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background: rgba(3, 12, 10, 0.64);
+  border: 1px solid rgba(120, 255, 195, 0.24);
+  border-radius: 12px;
+  padding: 12px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.overlay h1 {
+  margin: 0 0 8px;
+  color: #68f5a6;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+}
+
+.overlay p {
+  margin: 3px 0;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    top: 12px;
+    left: 12px;
+    padding: 10px 12px;
+  }
+
+  .overlay h1 {
+    font-size: 15px;
+  }
+
+  .overlay p {
+    font-size: 12px;
+  }
+}

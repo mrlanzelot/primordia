@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@pixi/react": "^7.1.2",
+    "pixi.js": "^7.4.3"
+  }
+}
