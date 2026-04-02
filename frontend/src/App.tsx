@@ -38,6 +38,7 @@ export default function App() {
     const app = new PIXI.Application({ width: window.innerWidth, height: window.innerHeight, backgroundColor: BG_COLOR, antialias: true });
     if (pixiContainer.current) pixiContainer.current.appendChild(app.view as HTMLCanvasElement);
     appRef.current = app;
+    app.stage.addChild(new PIXI.Graphics().lineStyle(1, 0x222222, 0.9).moveTo(window.innerWidth / 2, 0).lineTo(window.innerWidth / 2, window.innerHeight).moveTo(0, window.innerHeight / 2).lineTo(window.innerWidth, window.innerHeight / 2));
     const ws = new WebSocket(import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws');
     const handleResize = () => appRef.current?.renderer.resize(window.innerWidth, window.innerHeight);
     window.addEventListener('resize', handleResize);

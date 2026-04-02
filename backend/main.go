@@ -256,6 +256,7 @@ func main() {
 		world.NextID++
 		world.Organisms[world.NextID] = newOrganism(world.NextID)
 	}
+	log.Printf("spawned %d organisms", len(world.Organisms))
 	engineDone := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(TickRate)
