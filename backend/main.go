@@ -96,22 +96,19 @@ func pickCircleRadius(base float64) float64 {
 func newOrganism(id uint32) *Organism {
 	ang := rand.Float64() * 2 * math.Pi
 	x, y := math.Cos(ang), math.Sin(ang)
-	return &Organism{
-		ID: id, Energy: InitialEnergy, State: CellStateSearch,
-		VelX: x * SearchSpeed, VelY: y * SearchSpeed,
-		Turn:   0.06 + rand.Float64()*0.10,
-		Wobble: 0.03 + rand.Float64()*0.08,
-		Radius: 18 + rand.Float64()*28,
-		Timer:  12 + rand.Intn(20),
-	}
+	return &Organism{ID: id, Energy: InitialEnergy, State: CellStateSearch, VelX: x * SearchSpeed, VelY: y * SearchSpeed, Turn: 0.06 + rand.Float64()*0.10, Wobble: 0.03 + rand.Float64()*0.08, Radius: 18 + rand.Float64()*28, Timer: 12 + rand.Intn(20)}
 }
 
 func lerp(a, b, t float64) float64 { return a + (b-a)*t }
-
+func speed(x, y float64) float64   { return math.Hypot(x, y) }
 func steerTowards(org *Organism, tx, ty float64, strength float64) {
 	dx, dy := normalize(tx, ty)
-	org.VelX = lerp(org.VelX, dx*math.Hypot(org.VelX, org.VelY), strength)
-	org.VelY = lerp(org.VelY, dy*math.Hypot(org.VelX, org.VelY), strength)
+	s := speed(org.VelX, org.VelY)
+	if s == 0 {
+		s = SearchSpeed
+	}
+	org.VelX = lerp(org.VelX, dx*s, strength)
+	org.VelY = lerp(org.VelY, dy*s, strength)
 }
 
 func (w *World) Update() {
@@ -185,8 +182,8 @@ func (w *World) updateOrganisms() {
 			}
 		}
 		org.VelX, org.VelY = normalize(org.VelX, org.VelY)
-		org.Pos.X += org.VelX * SearchSpeed
-		org.Pos.Y += org.VelY * SearchSpeed
+		org.Pos.X += org.VelX * speed(org.VelX, org.VelY)
+		org.Pos.Y += org.VelY * speed(org.VelX, org.VelY)
 		org.Pos.X = clamp(org.Pos.X, 0, WorldWidth)
 		org.Pos.Y = clamp(org.Pos.Y, 0, WorldHeight)
 		org.Energy -= EnergyCost
