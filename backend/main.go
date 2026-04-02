@@ -22,7 +22,7 @@ const (
 	TickRate          = 30 * time.Millisecond
 	BroadcastRate     = 40 * time.Millisecond
 	InitialPopulation = 100
-	MaxFoodCount      = 150
+	MaxFoodCount      = 135
 	EnergyCost        = 0.2
 	EnergyFromFood    = 35.0
 	EatDistanceSq     = 144.0

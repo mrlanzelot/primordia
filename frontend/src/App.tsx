@@ -3,13 +3,11 @@ import * as PIXI from 'pixi.js';
 import './App.css';
 
 const BG_COLOR = 0x050505;
-const HEALTHY_COLOR = 0x4ade80;
-const LOW_ENERGY_COLOR = 0xf87171;
+const HIGH_ENERGY_COLOR = 0x3b82f6;
+const MID_ENERGY_COLOR = 0xfacc15;
+const LOW_ENERGY_COLOR = 0xef4444;
 const FOOD_COLOR = 0xfacc15;
-const SEARCH_COLOR = 0x60a5fa;
-const EXPLOIT_COLOR = 0xa78bfa;
-const REORIENT_COLOR = 0xf97316;
-const ENERGY_THRESHOLD = 50;
+const INITIAL_ENERGY = 100;
 const ORGANISM_RADIUS = 12;
 const FOOD_RADIUS = 5;
 const WORLD_WIDTH = 1000;
@@ -21,11 +19,11 @@ interface Organism { pos?: { x?: number; y?: number }; energy?: number; state?: 
 interface Food { pos?: { x?: number; y?: number } }
 interface WorldMessage { orgs?: Record<string, Organism>; food?: Record<string, Food> }
 
-const stateColor = (state?: CellState, energy?: number) => {
-  if (state === 'exploit_circle') return EXPLOIT_COLOR;
-  if (state === 'reorient') return REORIENT_COLOR;
-  if (state === 'search') return SEARCH_COLOR;
-  return (energy ?? 0) > ENERGY_THRESHOLD ? HEALTHY_COLOR : LOW_ENERGY_COLOR;
+const stateColor = (_state?: CellState, energy?: number) => {
+  const pct = ((energy ?? 0) / INITIAL_ENERGY) * 100;
+  if (pct > 67) return HIGH_ENERGY_COLOR;
+  if (pct < 33) return LOW_ENERGY_COLOR;
+  return MID_ENERGY_COLOR;
 };
 
 export default function App() {
