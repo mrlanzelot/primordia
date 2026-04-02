@@ -5,22 +5,32 @@ import './App.css';
 const BG_COLOR = 0x050505;
 const HEALTHY_COLOR = 0x4ade80;
 const LOW_ENERGY_COLOR = 0xf87171;
+const FOOD_COLOR = 0xfacc15;
+const SEARCH_COLOR = 0x60a5fa;
+const EXPLOIT_COLOR = 0xa78bfa;
+const REORIENT_COLOR = 0xf97316;
 const ENERGY_THRESHOLD = 50;
 const ORGANISM_RADIUS = 6;
+const FOOD_RADIUS = 4;
 
 type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
+type CellState = 'search' | 'exploit_circle' | 'reorient' | string;
 
 interface Organism {
-  pos: {
-    x: number;
-    y: number;
-  };
+  pos: { x: number; y: number };
   energy: number;
+  state?: CellState;
 }
 
-interface WorldMessage {
-  orgs?: Record<string, Organism>;
-}
+interface Food { pos: { x: number; y: number } }
+interface WorldMessage { orgs?: Record<string, Organism>; food?: Record<string, Food> }
+
+const stateColor = (state?: CellState, energy?: number) => {
+  if (state === 'exploit_circle') return EXPLOIT_COLOR;
+  if (state === 'reorient') return REORIENT_COLOR;
+  if (state === 'search') return SEARCH_COLOR;
+  return (energy ?? 0) > ENERGY_THRESHOLD ? HEALTHY_COLOR : LOW_ENERGY_COLOR;
+};
 
 export default function App() {
   const [pop, setPop] = useState(0);
@@ -28,89 +38,40 @@ export default function App() {
   const pixiContainer = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const orgsRef = useRef<Map<number, PIXI.Graphics>>(new Map());
+  const foodRef = useRef<Map<number, PIXI.Graphics>>(new Map());
 
   useEffect(() => {
-    const app = new PIXI.Application({
-      width: window.innerWidth,
-      height: window.innerHeight,
-      backgroundColor: BG_COLOR,
-      antialias: true,
-    });
-
-    if (pixiContainer.current) {
-      pixiContainer.current.appendChild(app.view as HTMLCanvasElement);
-    }
-
+    const app = new PIXI.Application({ width: window.innerWidth, height: window.innerHeight, backgroundColor: BG_COLOR, antialias: true });
+    if (pixiContainer.current) pixiContainer.current.appendChild(app.view as HTMLCanvasElement);
     appRef.current = app;
-    const wsUrl = import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws';
-    const ws = new WebSocket(wsUrl);
-
-    const handleResize = () => {
-      const current = appRef.current;
-      if (!current) {
-        return;
-      }
-      current.renderer.resize(window.innerWidth, window.innerHeight);
-    };
+    const ws = new WebSocket(import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws');
+    const handleResize = () => appRef.current?.renderer.resize(window.innerWidth, window.innerHeight);
     window.addEventListener('resize', handleResize);
-
-    ws.onopen = () => {
-      setConnectionState('connected');
-    };
-
-    ws.onerror = () => {
-      setConnectionState('error');
-    };
-
-    ws.onclose = () => {
-      setConnectionState('closed');
-    };
-
+    ws.onopen = () => setConnectionState('connected');
+    ws.onerror = () => setConnectionState('error');
+    ws.onclose = () => setConnectionState('closed');
     ws.onmessage = (e) => {
       const data = JSON.parse(e.data) as WorldMessage;
       const orgs = data.orgs || {};
+      const food = data.food || {};
       setPop(Object.keys(orgs).length);
-
+      Object.entries(food).forEach(([idStr, item]) => {
+        const id = Number(idStr);
+        let graphic = foodRef.current.get(id);
+        if (!graphic) { graphic = new PIXI.Graphics(); app.stage.addChild(graphic); foodRef.current.set(id, graphic); }
+        graphic.clear(); graphic.beginFill(FOOD_COLOR); graphic.drawCircle(item.pos.x, item.pos.y, FOOD_RADIUS); graphic.endFill();
+      });
       Object.entries(orgs).forEach(([idStr, org]) => {
         const id = Number(idStr);
         let graphic = orgsRef.current.get(id);
-
-        if (!graphic) {
-          graphic = new PIXI.Graphics();
-          app.stage.addChild(graphic);
-          orgsRef.current.set(id, graphic);
-        }
-
-        graphic.clear();
-        graphic.beginFill(org.energy > ENERGY_THRESHOLD ? HEALTHY_COLOR : LOW_ENERGY_COLOR);
-        graphic.drawCircle(org.pos.x, org.pos.y, ORGANISM_RADIUS);
-        graphic.endFill();
+        if (!graphic) { graphic = new PIXI.Graphics(); app.stage.addChild(graphic); orgsRef.current.set(id, graphic); }
+        graphic.clear(); graphic.beginFill(stateColor(org.state, org.energy)); graphic.drawCircle(org.pos.x, org.pos.y, ORGANISM_RADIUS); graphic.endFill();
       });
-
-      orgsRef.current.forEach((val, key) => {
-        if (!orgs[String(key)]) {
-          app.stage.removeChild(val);
-          orgsRef.current.delete(key);
-        }
-      });
+      orgsRef.current.forEach((val, key) => { if (!orgs[String(key)]) { app.stage.removeChild(val); orgsRef.current.delete(key); } });
+      foodRef.current.forEach((val, key) => { if (!food[String(key)]) { app.stage.removeChild(val); foodRef.current.delete(key); } });
     };
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      ws.close();
-      orgsRef.current.clear();
-      app.destroy(true, true);
-    };
+    return () => { window.removeEventListener('resize', handleResize); ws.close(); orgsRef.current.clear(); foodRef.current.clear(); app.destroy(true, true); };
   }, []);
 
-  return (
-    <div className="app-shell">
-      <div className="overlay">
-        <h1>PRIMORDIA ENGINE</h1>
-        <p>Population: {pop}</p>
-        <p>Connection: {connectionState}</p>
-      </div>
-      <div ref={pixiContainer} />
-    </div>
-  );
+  return <div className="app-shell"><div className="overlay"><h1>PRIMORDIA ENGINE</h1><p>Population: {pop}</p><p>Connection: {connectionState}</p></div><div ref={pixiContainer} /></div>;
 }
