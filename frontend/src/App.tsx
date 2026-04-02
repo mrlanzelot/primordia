@@ -17,8 +17,8 @@ const WORLD_HEIGHT = 1000;
 
 type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
 type CellState = 'search' | 'exploit_circle' | 'reorient' | string;
-interface Organism { pos?: { x: number; y: number }; energy: number; state?: CellState }
-interface Food { pos?: { x: number; y: number } }
+interface Organism { pos?: { x?: number; y?: number }; energy?: number; state?: CellState }
+interface Food { pos?: { x?: number; y?: number } }
 interface WorldMessage { orgs?: Record<string, Organism>; food?: Record<string, Food> }
 
 const stateColor = (state?: CellState, energy?: number) => {
@@ -70,18 +70,28 @@ export default function App() {
       setLastSeen(Date.now());
       setPop(Object.keys(orgs).length);
       const firstOrg = Object.values(orgs)[0];
-      if (firstOrg?.pos) setDebug(`first org: ${Math.round(firstOrg.pos.x)},${Math.round(firstOrg.pos.y)} scale:${app.stage.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`); else setDebug(`first org: missing scale:${app.stage.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`);
+      const fx = firstOrg?.pos?.x;
+      const fy = firstOrg?.pos?.y;
+      setDebug(firstOrg && typeof fx === 'number' && typeof fy === 'number'
+        ? `first org: ${Math.round(fx)},${Math.round(fy)} scale:${app.stage.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`
+        : `first org: missing scale:${app.stage.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`);
       Object.entries(food).forEach(([idStr, item]) => {
         const id = Number(idStr);
+        const x = item.pos?.x;
+        const y = item.pos?.y;
+        if (typeof x !== 'number' || typeof y !== 'number') return;
         let graphic = foodRef.current.get(id);
         if (!graphic) { graphic = new PIXI.Graphics(); app.stage.addChild(graphic); foodRef.current.set(id, graphic); }
-        if (!item.pos) return; graphic.clear(); graphic.beginFill(FOOD_COLOR); graphic.drawCircle(item.pos.x, item.pos.y, FOOD_RADIUS); graphic.endFill();
+        graphic.clear(); graphic.beginFill(FOOD_COLOR); graphic.drawCircle(x, y, FOOD_RADIUS); graphic.endFill();
       });
       Object.entries(orgs).forEach(([idStr, org]) => {
         const id = Number(idStr);
+        const x = org.pos?.x;
+        const y = org.pos?.y;
+        if (typeof x !== 'number' || typeof y !== 'number') return;
         let graphic = orgsRef.current.get(id);
         if (!graphic) { graphic = new PIXI.Graphics(); app.stage.addChild(graphic); orgsRef.current.set(id, graphic); }
-        if (!org.pos) return; graphic.clear(); graphic.beginFill(stateColor(org.state, org.energy)); graphic.drawCircle(org.pos.x, org.pos.y, ORGANISM_RADIUS); graphic.endFill();
+        graphic.clear(); graphic.beginFill(stateColor(org.state, org.energy)); graphic.drawCircle(x, y, ORGANISM_RADIUS); graphic.endFill();
       });
       orgsRef.current.forEach((val, key) => { if (!orgs[String(key)]) { app.stage.removeChild(val); orgsRef.current.delete(key); } });
       foodRef.current.forEach((val, key) => { if (!food[String(key)]) { app.stage.removeChild(val); foodRef.current.delete(key); } });
