@@ -96,7 +96,14 @@ func pickCircleRadius(base float64) float64 {
 func newOrganism(id uint32) *Organism {
 	ang := rand.Float64() * 2 * math.Pi
 	x, y := math.Cos(ang), math.Sin(ang)
-	return &Organism{ID: id, Energy: InitialEnergy, State: CellStateSearch, VelX: x * SearchSpeed, VelY: y * SearchSpeed, Turn: 0.06 + rand.Float64()*0.10, Wobble: 0.03 + rand.Float64()*0.08, Radius: 18 + rand.Float64()*28, Timer: 12 + rand.Intn(20)}
+	centerBias := rand.Float64() < 0.55
+	px := rand.Float64() * WorldWidth
+	py := rand.Float64() * WorldHeight
+	if centerBias {
+		px = WorldWidth*0.25 + rand.Float64()*WorldWidth*0.5
+		py = WorldHeight*0.25 + rand.Float64()*WorldHeight*0.5
+	}
+	return &Organism{ID: id, Pos: Position{X: px, Y: py}, Energy: InitialEnergy, State: CellStateSearch, VelX: x * SearchSpeed, VelY: y * SearchSpeed, Turn: 0.06 + rand.Float64()*0.10, Wobble: 0.03 + rand.Float64()*0.08, Radius: 18 + rand.Float64()*28, Timer: 12 + rand.Intn(20)}
 }
 
 func lerp(a, b, t float64) float64 { return a + (b-a)*t }
