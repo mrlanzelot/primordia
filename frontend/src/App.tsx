@@ -15,7 +15,6 @@ const FOOD_RADIUS = 4;
 
 type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
 type CellState = 'search' | 'exploit_circle' | 'reorient' | string;
-
 interface Organism { pos: { x: number; y: number }; energy: number; state?: CellState }
 interface Food { pos: { x: number; y: number } }
 interface WorldMessage { orgs?: Record<string, Organism>; food?: Record<string, Food> }

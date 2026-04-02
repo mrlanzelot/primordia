@@ -28,19 +28,14 @@ const (
 	EatDistanceSq     = 144.0
 	InitialEnergy     = 100.0
 
-	SearchWobble       = 0.10
 	SearchSpeed        = 1.5
-	CircleTurn         = 0.22
-	CircleTicks        = 10
 	SenseRadiusSq      = 500.0
 	CircleRadiusJitter = 0.22
 )
 
 type Position struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
+	X, Y float64 `json:"x"`
 }
-
 type CellState string
 
 const (
@@ -54,14 +49,16 @@ type Organism struct {
 	Pos     Position  `json:"pos"`
 	Energy  float64   `json:"energy"`
 	State   CellState `json:"state"`
-	DirX    float64   `json:"dirX"`
-	DirY    float64   `json:"dirY"`
+	VelX    float64   `json:"velX"`
+	VelY    float64   `json:"velY"`
+	Turn    float64   `json:"turn"`
+	Wobble  float64   `json:"wobble"`
+	Radius  float64   `json:"radius"`
 	Timer   int       `json:"timer"`
 	Loops   int       `json:"loops"`
-	Radius  float64   `json:"radius"`
-	FoodX   float64   `json:"foodX"`
-	FoodY   float64   `json:"foodY"`
-	HasFood bool      `json:"hasFood"`
+	GoalX   float64   `json:"goalX"`
+	GoalY   float64   `json:"goalY"`
+	HasGoal bool      `json:"hasGoal"`
 }
 
 type Food struct {
@@ -83,24 +80,38 @@ func normalize(x, y float64) (float64, float64) {
 	}
 	return x / l, y / l
 }
-
 func rotate(x, y, a float64) (float64, float64) {
 	c, s := math.Cos(a), math.Sin(a)
 	return x*c - y*s, x*s + y*c
 }
-
+func clamp(v, lo, hi float64) float64 { return math.Max(lo, math.Min(hi, v)) }
 func pickCircleRadius(base float64) float64 {
 	r := 10 + rand.Float64()*30
 	if rand.Float64() < 0.35 {
 		r = base * (1 + (rand.Float64()*2-1)*CircleRadiusJitter)
 	}
-	return math.Max(8, math.Min(64, r))
+	return clamp(r, 8, 64)
 }
 
 func newOrganism(id uint32) *Organism {
 	ang := rand.Float64() * 2 * math.Pi
 	x, y := math.Cos(ang), math.Sin(ang)
-	return &Organism{ID: id, Energy: InitialEnergy, State: CellStateSearch, DirX: x, DirY: y, Timer: 10 + rand.Intn(20), Radius: 18 + rand.Float64()*28}
+	return &Organism{
+		ID: id, Energy: InitialEnergy, State: CellStateSearch,
+		VelX: x * SearchSpeed, VelY: y * SearchSpeed,
+		Turn:   0.06 + rand.Float64()*0.10,
+		Wobble: 0.03 + rand.Float64()*0.08,
+		Radius: 18 + rand.Float64()*28,
+		Timer:  12 + rand.Intn(20),
+	}
+}
+
+func lerp(a, b, t float64) float64 { return a + (b-a)*t }
+
+func steerTowards(org *Organism, tx, ty float64, strength float64) {
+	dx, dy := normalize(tx, ty)
+	org.VelX = lerp(org.VelX, dx*math.Hypot(org.VelX, org.VelY), strength)
+	org.VelY = lerp(org.VelY, dy*math.Hypot(org.VelX, org.VelY), strength)
 }
 
 func (w *World) Update() {
@@ -120,53 +131,64 @@ func (w *World) updateOrganisms() {
 		switch org.State {
 		case CellStateSearch:
 			org.Timer--
-			org.DirX, org.DirY = rotate(org.DirX, org.DirY, (rand.Float64()-0.5)*SearchWobble)
-			org.DirX, org.DirY = normalize(org.DirX, org.DirY)
-			org.Pos.X += org.DirX * SearchSpeed
-			org.Pos.Y += org.DirY * SearchSpeed
+			org.VelX, org.VelY = rotate(org.VelX, org.VelY, (rand.Float64()-0.5)*org.Wobble)
 			if fx, fy, ok := w.nearestFood(org.Pos.X, org.Pos.Y, SenseRadiusSq*rand.Float64()); ok {
 				org.State = CellStateExploitCircle
 				org.Loops = 0
 				org.Timer = 0
 				org.Radius = pickCircleRadius(org.Radius)
-				org.FoodX, org.FoodY = fx, fy
-				org.HasFood = true
+				org.GoalX, org.GoalY = fx, fy
+				org.HasGoal = true
 			}
 			if org.Timer <= 0 {
 				org.State = CellStateReorient
 			}
+			org.VelX, org.VelY = normalize(org.VelX, org.VelY)
+			org.VelX *= SearchSpeed
+			org.VelY *= SearchSpeed
 		case CellStateExploitCircle:
 			org.Timer++
-			cx, cy := org.FoodX, org.FoodY
+			cx, cy := org.GoalX, org.GoalY
 			dx := org.Pos.X - cx
 			dy := org.Pos.Y - cy
-			targetAngle := CircleTurn + (rand.Float64()-0.5)*0.18
+			org.Radius += (rand.Float64() - 0.5) * 0.8
+			org.Radius = clamp(org.Radius, 8, 64)
+			targetAngle := org.Turn + (rand.Float64()-0.5)*0.10
 			px, py := rotate(dx, dy, targetAngle)
 			px, py = normalize(px, py)
-			org.Radius += (rand.Float64() - 0.5) * 1.2
-			org.Radius = math.Max(8, math.Min(64, org.Radius))
-			org.Pos.X = cx + px*org.Radius
-			org.Pos.Y = cy + py*org.Radius
-			org.DirX, org.DirY = px, py
+			desiredX := px * org.Radius * 0.10
+			desiredY := py * org.Radius * 0.10
+			steerTowards(org, desiredX, desiredY, 0.12+org.Wobble*0.5)
 			if org.Timer%8 == 0 {
 				org.Loops++
 			}
 			if fx, fy, ok := w.nearestFood(org.Pos.X, org.Pos.Y, SenseRadiusSq*0.75+rand.Float64()*SenseRadiusSq*0.75); ok {
-				org.FoodX, org.FoodY = fx, fy
-				org.HasFood = true
-				org.Radius += (rand.Float64() - 0.5) * 3.0
-				org.Radius = math.Max(8, math.Min(64, org.Radius))
+				org.GoalX, org.GoalY = fx, fy
+				org.HasGoal = true
+				org.Radius = pickCircleRadius(org.Radius)
 			} else if org.Loops >= 2 {
 				org.State = CellStateReorient
 			}
 		case CellStateReorient:
-			org.DirX, org.DirY = normalize(rand.Float64()*2-1, rand.Float64()*2-1)
-			org.Timer = 10 + rand.Intn(20)
-			org.Radius = pickCircleRadius(org.Radius)
-			org.State = CellStateSearch
+			if !org.HasGoal {
+				org.GoalX = rand.Float64() * WorldWidth
+				org.GoalY = rand.Float64() * WorldHeight
+			}
+			dx := org.GoalX - org.Pos.X
+			dy := org.GoalY - org.Pos.Y
+			steerTowards(org, dx, dy, 0.05+org.Wobble*0.35)
+			org.Timer -= 2
+			if org.Timer <= 0 {
+				org.Timer = 12 + rand.Intn(20)
+				org.State = CellStateSearch
+				org.Radius = pickCircleRadius(org.Radius)
+			}
 		}
-		org.Pos.X = math.Max(0, math.Min(WorldWidth, org.Pos.X))
-		org.Pos.Y = math.Max(0, math.Min(WorldHeight, org.Pos.Y))
+		org.VelX, org.VelY = normalize(org.VelX, org.VelY)
+		org.Pos.X += org.VelX * SearchSpeed
+		org.Pos.Y += org.VelY * SearchSpeed
+		org.Pos.X = clamp(org.Pos.X, 0, WorldWidth)
+		org.Pos.Y = clamp(org.Pos.Y, 0, WorldHeight)
 		org.Energy -= EnergyCost
 		if org.Energy <= 0 {
 			deadIDs = append(deadIDs, id)
@@ -211,8 +233,8 @@ func (w *World) applyEating() {
 			dy := org.Pos.Y - f.Pos.Y
 			if dx*dx+dy*dy < EatDistanceSq {
 				org.Energy += EnergyFromFood
-				org.HasFood = true
-				org.FoodX, org.FoodY = f.Pos.X, f.Pos.Y
+				org.HasGoal = true
+				org.GoalX, org.GoalY = f.Pos.X, f.Pos.Y
 				org.State = CellStateExploitCircle
 				org.Timer = 0
 				org.Loops = 0
