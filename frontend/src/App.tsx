@@ -12,6 +12,8 @@ const REORIENT_COLOR = 0xf97316;
 const ENERGY_THRESHOLD = 50;
 const ORGANISM_RADIUS = 12;
 const FOOD_RADIUS = 5;
+const WORLD_WIDTH = 1000;
+const WORLD_HEIGHT = 1000;
 
 type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
 type CellState = 'search' | 'exploit_circle' | 'reorient' | string;
@@ -40,16 +42,27 @@ export default function App() {
     if (pixiContainer.current) pixiContainer.current.appendChild(app.view as HTMLCanvasElement);
     appRef.current = app;
 
+    const worldScaleX = window.innerWidth / WORLD_WIDTH;
+    const worldScaleY = window.innerHeight / WORLD_HEIGHT;
+    const sx = Math.min(worldScaleX, worldScaleY);
+    app.stage.scale.set(sx, sx);
+
     const center = new PIXI.Graphics();
     center.lineStyle(1, 0x222222, 0.9);
-    center.moveTo(window.innerWidth / 2, 0);
-    center.lineTo(window.innerWidth / 2, window.innerHeight);
-    center.moveTo(0, window.innerHeight / 2);
-    center.lineTo(window.innerWidth, window.innerHeight / 2);
+    center.moveTo(WORLD_WIDTH / 2, 0);
+    center.lineTo(WORLD_WIDTH / 2, WORLD_HEIGHT);
+    center.moveTo(0, WORLD_HEIGHT / 2);
+    center.lineTo(WORLD_WIDTH, WORLD_HEIGHT / 2);
     app.stage.addChild(center);
 
     const ws = new WebSocket(import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws');
-    const handleResize = () => appRef.current?.renderer.resize(window.innerWidth, window.innerHeight);
+    const handleResize = () => {
+      const app = appRef.current;
+      if (!app) return;
+      app.renderer.resize(window.innerWidth, window.innerHeight);
+      const scale = Math.min(window.innerWidth / WORLD_WIDTH, window.innerHeight / WORLD_HEIGHT);
+      app.stage.scale.set(scale, scale);
+    };
     window.addEventListener('resize', handleResize);
     ws.onopen = () => setConnectionState('connected');
     ws.onerror = () => setConnectionState('error');
