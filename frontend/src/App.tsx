@@ -12,6 +12,8 @@ const REORIENT_COLOR = 0xf97316;
 const ENERGY_THRESHOLD = 50;
 const ORGANISM_RADIUS = 12;
 const FOOD_RADIUS = 5;
+const WORLD_WIDTH = 1000;
+const WORLD_HEIGHT = 1000;
 
 type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
 type CellState = 'search' | 'exploit_circle' | 'reorient' | string;
@@ -51,7 +53,7 @@ export default function App() {
 
     const marker = new PIXI.Graphics();
     marker.beginFill(0xff00ff);
-    marker.drawRect(490, 490, 20, 20);
+    marker.drawRect(window.innerWidth / 2 - 10, window.innerHeight / 2 - 10, 20, 20);
     marker.endFill();
     app.stage.addChild(marker);
 
@@ -68,7 +70,7 @@ export default function App() {
       setLastSeen(Date.now());
       setPop(Object.keys(orgs).length);
       const firstOrg = Object.values(orgs)[0];
-      if (firstOrg) setDebug(`first org: ${Math.round(firstOrg.pos.x)},${Math.round(firstOrg.pos.y)} scale:${app.stage.scale.x.toFixed(2)}`);
+      if (firstOrg) setDebug(`first org: ${Math.round(firstOrg.pos.x)},${Math.round(firstOrg.pos.y)} scale:${app.stage.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`);
       Object.entries(food).forEach(([idStr, item]) => {
         const id = Number(idStr);
         let graphic = foodRef.current.get(id);
