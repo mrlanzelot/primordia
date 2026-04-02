@@ -31,18 +31,14 @@ const (
 	SearchWobble       = 0.10
 	SearchSpeed        = 1.5
 	CircleTurn         = 0.22
-	CircleSpeed        = 1.0
-	SearchTicks        = 24
 	CircleTicks        = 10
 	SenseRadiusSq      = 500.0
 	CircleRadiusJitter = 0.22
 )
 
 type Position struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
+	X, Y float64 `json:"x"`
 }
-
 type CellState string
 
 const (
@@ -85,24 +81,21 @@ func normalize(x, y float64) (float64, float64) {
 	}
 	return x / l, y / l
 }
-
 func rotate(x, y, a float64) (float64, float64) {
 	c, s := math.Cos(a), math.Sin(a)
 	return x*c - y*s, x*s + y*c
 }
-
-func newOrganism(id uint32) *Organism {
-	ang := rand.Float64() * 2 * math.Pi
-	x, y := math.Cos(ang), math.Sin(ang)
-	return &Organism{ID: id, Energy: InitialEnergy, State: CellStateSearch, DirX: x, DirY: y, Timer: SearchTicks, Radius: 18 + rand.Float64()*28}
-}
-
 func pickCircleRadius(base float64) float64 {
 	r := 10 + rand.Float64()*30
 	if rand.Float64() < 0.35 {
 		r = base * (1 + (rand.Float64()*2-1)*CircleRadiusJitter)
 	}
 	return math.Max(8, math.Min(64, r))
+}
+func newOrganism(id uint32) *Organism {
+	ang := rand.Float64() * 2 * math.Pi
+	x, y := math.Cos(ang), math.Sin(ang)
+	return &Organism{ID: id, Energy: InitialEnergy, State: CellStateSearch, DirX: x, DirY: y, Timer: 10 + rand.Intn(20), Radius: 18 + rand.Float64()*28}
 }
 
 func (w *World) Update() {
@@ -163,7 +156,7 @@ func (w *World) updateOrganisms() {
 			}
 		case CellStateReorient:
 			org.DirX, org.DirY = normalize(rand.Float64()*2-1, rand.Float64()*2-1)
-			org.Timer = SearchTicks
+			org.Timer = 10 + rand.Intn(20)
 			org.Radius = pickCircleRadius(org.Radius)
 			org.State = CellStateSearch
 		}
@@ -195,7 +188,6 @@ func (w *World) nearestFood(x, y float64, maxSq float64) (float64, float64, bool
 	}
 	return bx, by, found
 }
-
 func (w *World) spawnFood() {
 	if len(w.Food) >= MaxFoodCount {
 		return
@@ -203,7 +195,6 @@ func (w *World) spawnFood() {
 	w.NextID++
 	w.Food[w.NextID] = &Food{ID: w.NextID, Pos: Position{X: rand.Float64() * WorldWidth, Y: rand.Float64() * WorldHeight}}
 }
-
 func (w *World) applyEating() {
 	eaten := make(map[uint32]struct{})
 	for _, org := range w.Organisms {
