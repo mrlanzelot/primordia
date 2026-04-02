@@ -30,6 +30,7 @@ export default function App() {
   const [pop, setPop] = useState(0);
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
   const [lastSeen, setLastSeen] = useState(0);
+  const [debug, setDebug] = useState('waiting');
   const pixiContainer = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const orgsRef = useRef<Map<number, PIXI.Graphics>>(new Map());
@@ -48,6 +49,12 @@ export default function App() {
     center.lineTo(window.innerWidth, window.innerHeight / 2);
     app.stage.addChild(center);
 
+    const marker = new PIXI.Graphics();
+    marker.beginFill(0xff00ff);
+    marker.drawRect(490, 490, 20, 20);
+    marker.endFill();
+    app.stage.addChild(marker);
+
     const ws = new WebSocket(import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws');
     const handleResize = () => appRef.current?.renderer.resize(window.innerWidth, window.innerHeight);
     window.addEventListener('resize', handleResize);
@@ -60,6 +67,8 @@ export default function App() {
       const food = data.food || {};
       setLastSeen(Date.now());
       setPop(Object.keys(orgs).length);
+      const firstOrg = Object.values(orgs)[0];
+      if (firstOrg) setDebug(`first org: ${Math.round(firstOrg.pos.x)},${Math.round(firstOrg.pos.y)} scale:${app.stage.scale.x.toFixed(2)}`);
       Object.entries(food).forEach(([idStr, item]) => {
         const id = Number(idStr);
         let graphic = foodRef.current.get(id);
@@ -79,5 +88,5 @@ export default function App() {
   }, []);
 
   const staleMs = lastSeen ? Date.now() - lastSeen : 0;
-  return <div className="app-shell"><div className="overlay"><h1>PRIMORDIA ENGINE</h1><p>Population: {pop}</p><p>Connection: {connectionState}</p><p>Last packet: {staleMs ? `${Math.round(staleMs / 1000)}s ago` : 'none'}</p></div><div ref={pixiContainer} /></div>;
+  return <div className="app-shell"><div className="overlay"><h1>PRIMORDIA ENGINE</h1><p>Population: {pop}</p><p>Connection: {connectionState}</p><p>Last packet: {staleMs ? `${Math.round(staleMs / 1000)}s ago` : 'none'}</p><p>{debug}</p></div><div ref={pixiContainer} /></div>;
 }
