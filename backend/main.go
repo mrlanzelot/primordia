@@ -37,8 +37,10 @@ const (
 )
 
 type Position struct {
-	X, Y float64 `json:"x"`
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
+
 type CellState string
 
 const (
@@ -81,10 +83,12 @@ func normalize(x, y float64) (float64, float64) {
 	}
 	return x / l, y / l
 }
+
 func rotate(x, y, a float64) (float64, float64) {
 	c, s := math.Cos(a), math.Sin(a)
 	return x*c - y*s, x*s + y*c
 }
+
 func pickCircleRadius(base float64) float64 {
 	r := 10 + rand.Float64()*30
 	if rand.Float64() < 0.35 {
@@ -92,6 +96,7 @@ func pickCircleRadius(base float64) float64 {
 	}
 	return math.Max(8, math.Min(64, r))
 }
+
 func newOrganism(id uint32) *Organism {
 	ang := rand.Float64() * 2 * math.Pi
 	x, y := math.Cos(ang), math.Sin(ang)
