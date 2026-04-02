@@ -10,8 +10,8 @@ const SEARCH_COLOR = 0x60a5fa;
 const EXPLOIT_COLOR = 0xa78bfa;
 const REORIENT_COLOR = 0xf97316;
 const ENERGY_THRESHOLD = 50;
-const ORGANISM_RADIUS = 6;
-const FOOD_RADIUS = 4;
+const ORGANISM_RADIUS = 12;
+const FOOD_RADIUS = 5;
 
 type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
 type CellState = 'search' | 'exploit_circle' | 'reorient' | string;
@@ -29,6 +29,7 @@ const stateColor = (state?: CellState, energy?: number) => {
 export default function App() {
   const [pop, setPop] = useState(0);
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
+  const [lastSeen, setLastSeen] = useState(0);
   const pixiContainer = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const orgsRef = useRef<Map<number, PIXI.Graphics>>(new Map());
@@ -38,7 +39,15 @@ export default function App() {
     const app = new PIXI.Application({ width: window.innerWidth, height: window.innerHeight, backgroundColor: BG_COLOR, antialias: true });
     if (pixiContainer.current) pixiContainer.current.appendChild(app.view as HTMLCanvasElement);
     appRef.current = app;
-    app.stage.addChild(new PIXI.Graphics().lineStyle(1, 0x222222, 0.9).moveTo(window.innerWidth / 2, 0).lineTo(window.innerWidth / 2, window.innerHeight).moveTo(0, window.innerHeight / 2).lineTo(window.innerWidth, window.innerHeight / 2));
+
+    const center = new PIXI.Graphics();
+    center.lineStyle(1, 0x222222, 0.9);
+    center.moveTo(window.innerWidth / 2, 0);
+    center.lineTo(window.innerWidth / 2, window.innerHeight);
+    center.moveTo(0, window.innerHeight / 2);
+    center.lineTo(window.innerWidth, window.innerHeight / 2);
+    app.stage.addChild(center);
+
     const ws = new WebSocket(import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws');
     const handleResize = () => appRef.current?.renderer.resize(window.innerWidth, window.innerHeight);
     window.addEventListener('resize', handleResize);
@@ -49,6 +58,7 @@ export default function App() {
       const data = JSON.parse(e.data) as WorldMessage;
       const orgs = data.orgs || {};
       const food = data.food || {};
+      setLastSeen(Date.now());
       setPop(Object.keys(orgs).length);
       Object.entries(food).forEach(([idStr, item]) => {
         const id = Number(idStr);
@@ -60,7 +70,10 @@ export default function App() {
         const id = Number(idStr);
         let graphic = orgsRef.current.get(id);
         if (!graphic) { graphic = new PIXI.Graphics(); app.stage.addChild(graphic); orgsRef.current.set(id, graphic); }
-        graphic.clear(); graphic.beginFill(stateColor(org.state, org.energy)); graphic.drawCircle(org.pos.x, org.pos.y, ORGANISM_RADIUS); graphic.endFill();
+        graphic.clear();
+        graphic.beginFill(stateColor(org.state, org.energy));
+        graphic.drawCircle(org.pos.x, org.pos.y, ORGANISM_RADIUS);
+        graphic.endFill();
       });
       orgsRef.current.forEach((val, key) => { if (!orgs[String(key)]) { app.stage.removeChild(val); orgsRef.current.delete(key); } });
       foodRef.current.forEach((val, key) => { if (!food[String(key)]) { app.stage.removeChild(val); foodRef.current.delete(key); } });
@@ -68,5 +81,6 @@ export default function App() {
     return () => { window.removeEventListener('resize', handleResize); ws.close(); orgsRef.current.clear(); foodRef.current.clear(); app.destroy(true, true); };
   }, []);
 
-  return <div className="app-shell"><div className="overlay"><h1>PRIMORDIA ENGINE</h1><p>Population: {pop}</p><p>Connection: {connectionState}</p></div><div ref={pixiContainer} /></div>;
+  const staleMs = lastSeen ? Date.now() - lastSeen : 0;
+  return <div className="app-shell"><div className="overlay"><h1>PRIMORDIA ENGINE</h1><p>Population: {pop}</p><p>Connection: {connectionState}</p><p>Last packet: {staleMs ? `${Math.round(staleMs / 1000)}s ago` : 'none'}</p></div><div ref={pixiContainer} /></div>;
 }
