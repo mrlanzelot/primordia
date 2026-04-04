@@ -3,7 +3,7 @@
 ## 1. Archie (Lead Architect)
 - **Model:** ollama/mistral-small:24b
 - **Role:** System design, integration decisions, and implementation sequencing.
-- **Goal:** Keep backend, frontend, and docs aligned.
+- **Goal:** Keep backend, frontend, and docs aligned, no coding updates
 - **Tools:** shell, filesystem, search.
 
 ## 2. Gopher (Backend Specialist)
