@@ -33,7 +33,16 @@ const (
 	PlanTicksMax    = 60
 	WallAvoidMargin = 50.0
 	FoodSeekWeight  = 0.28
+	SmellSeekWeight = 0.22
+	SmellMinFollow  = 0.04
 	FoodSenseSq     = 6400.0
+
+	OrganismAvoidRadiusSq = 2025.0
+	OrganismPersonalSq    = 256.0
+	OrganismAvoidWeight   = 0.42
+	OrganismPanicWeight   = 0.85
+	LowEnergyAvoidBoost   = 0.25
+	CrowdSlowdownMax      = 0.35
 )
 
 const (
@@ -129,6 +138,27 @@ func nearestFood(x, y float64, maxSq float64, foods map[uint64]*food.Food) (floa
 	return bx, by, found
 }
 
+// nearestOrganism finds the closest other organism position within a squared-distance limit.
+func nearestOrganism(selfID uint64, x, y, maxSq float64, orgs map[uint64]*organism.Organism) (float64, float64, float64, bool) {
+	best := maxSq
+	var bx, by float64
+	found := false
+	for id, o := range orgs {
+		if id == selfID {
+			continue
+		}
+		dx := x - o.Pos.X
+		dy := y - o.Pos.Y
+		d := dx*dx + dy*dy
+		if d <= best {
+			best = d
+			bx, by = o.Pos.X, o.Pos.Y
+			found = true
+		}
+	}
+	return bx, by, best, found
+}
+
 // NewOrganism initializes one organism with random spawn and search state defaults.
 func NewOrganism(id uint64) *organism.Organism {
 	ang := rand.Float64() * 2 * math.Pi
@@ -172,11 +202,47 @@ func UpdateOrganisms(orgs map[uint64]*organism.Organism, foods map[uint64]*food.
 				toFoodX, toFoodY := normalize(fx-org.Pos.X, fy-org.Pos.Y)
 				desiredX, desiredY = blendDirection(desiredX, desiredY, toFoodX, toFoodY, FoodSeekWeight)
 			}
+			if len(org.SenseVec) >= 19 {
+				smellStrength := org.SenseVec[16]
+				smellDirX := org.SenseVec[17]
+				smellDirY := org.SenseVec[18]
+				if smellStrength > SmellMinFollow && (smellDirX != 0 || smellDirY != 0) {
+					desiredX, desiredY = blendDirection(desiredX, desiredY, smellDirX, smellDirY, SmellSeekWeight*smellStrength)
+				}
+			}
+
+			moveSpeed := SearchSpeed
+			if ox, oy, distSq, ok := nearestOrganism(org.ID, org.Pos.X, org.Pos.Y, OrganismAvoidRadiusSq, orgs); ok {
+				awayX, awayY := normalize(org.Pos.X-ox, org.Pos.Y-oy)
+				distance := math.Sqrt(distSq)
+				risk := 1 - (distance / math.Sqrt(OrganismAvoidRadiusSq))
+				if risk < 0 {
+					risk = 0
+				}
+
+				avoidWeight := OrganismAvoidWeight * risk
+				if org.Energy < MaxEnergy*0.35 {
+					avoidWeight += LowEnergyAvoidBoost * risk
+				}
+				if distSq <= OrganismPersonalSq {
+					avoidWeight = math.Max(avoidWeight, OrganismPanicWeight)
+				}
+				desiredX, desiredY = blendDirection(desiredX, desiredY, awayX, awayY, avoidWeight)
+
+				slowdown := 1 - CrowdSlowdownMax*risk
+				if distSq <= OrganismPersonalSq {
+					slowdown *= 0.72
+				}
+				if slowdown < 0.45 {
+					slowdown = 0.45
+				}
+				moveSpeed = SearchSpeed * slowdown
+			}
 
 			org.DirX, org.DirY = steerToward(org.DirX, org.DirY, desiredX, desiredY, SearchTurnMax)
 			org.DirX, org.DirY = normalize(org.DirX, org.DirY)
-			org.Pos.X += org.DirX * SearchSpeed
-			org.Pos.Y += org.DirY * SearchSpeed
+			org.Pos.X += org.DirX * moveSpeed
+			org.Pos.Y += org.DirY * moveSpeed
 			if fx, fy, ok := nearestFood(org.Pos.X, org.Pos.Y, SenseRadiusSq, foods); ok {
 				org.State = CellStateExploitCircle
 				org.Timer = 0

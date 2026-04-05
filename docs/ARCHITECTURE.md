@@ -21,7 +21,7 @@ Main runtime flow:
 Simulation update is split into systems in `internal/systems`:
 
 1. `sense`: fills `SenseVec` (raycast + smell + self sensors)
-2. `movement`: movement, boundary clamp, energy decay, death
+2. `movement`: movement, boundary clamp, smell-guided steering, organism crowd-avoidance, energy decay, death
 3. `eating`: proximity checks and energy gain via spatial query
 4. `food`: food cap enforcement and random spawn
 
@@ -35,6 +35,7 @@ Simulation update is split into systems in `internal/systems`:
 6. Update HUD and fixed inspector panel (no canvas layout reflow)
 7. Handle local organism selection/deselection with Pixi pointer events
 8. Send speed-control POST requests to `/speed?rate={n}`
+9. Send lifecycle control POST requests to `/control?action=start|stop|restart`
 
 ## Concurrency and Safety
 
@@ -47,8 +48,13 @@ Simulation update is split into systems in `internal/systems`:
 
 - Protocol is full-state broadcast, not delta-based.
 - Brain system is currently a random-walk stub.
-- `/speed` is currently a backend stub and does not yet alter simulation tick cadence.
 - No persistence layer is active yet.
+
+## Runtime Behaviors
+
+- Simulation auto-pauses when population reaches zero.
+- Search movement blends wander target + nearest-food cue + smell gradient cue.
+- Close organism proximity adds avoidance steering and temporary slowdown to reduce clustering.
 
 ## Next Structural Step
 

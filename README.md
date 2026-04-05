@@ -14,7 +14,8 @@ The current milestone is Phase 1: Emergence Explorer.
 
 - Backend simulation loop in Go with internal package split
 - WebSocket broadcast of world state
-- Frontend visualization with React + PixiJS layered renderer, inspector, and HUD speed controls
+- Frontend visualization with React + PixiJS layered renderer, inspector, and HUD speed/lifecycle controls
+- Search behavior blending wander, nearest-food cue, smell-gradient cue, and crowd avoidance
 
 ## Prerequisites
 

@@ -477,22 +477,8 @@
   gap: 4px;
 }
 
-.smell-track {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-
-.smell-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(245, 166, 35, 0.45), rgba(245, 166, 35, 0.95));
-  transition: width 120ms linear;
-}
-
 .smell-strength-dots {
-  margin-top: 6px;
+  margin-top: 2px;
   display: grid;
   grid-template-columns: repeat(10, 1fr);
   gap: 4px;

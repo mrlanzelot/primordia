@@ -45,6 +45,19 @@ function ageMaturity(age: number): number {
   return clamp01(age / 6000);
 }
 
+function maturityLabel(maturity: number): string {
+  if (maturity < 0.2) {
+    return 'Early';
+  }
+  if (maturity < 0.5) {
+    return 'Growing';
+  }
+  if (maturity < 0.85) {
+    return 'Mature';
+  }
+  return 'Late stage';
+}
+
 function describeRelativeDirection(angle: number): string {
   if (angle < -2.45) {
     return 'behind';
@@ -112,7 +125,7 @@ export function OrganismInspector({ organism, selectedId, onDeselect }: Organism
   const smellRotationDeg = smell > 0.12 ? (smellAngle * 180) / Math.PI : 0;
   const speedRotation = speedNeedleRotation(speed);
   const smellVisualOpacity = 0.18 + smell * 0.82;
-  const ageCyclePercent = Math.round((ageCycle(age) / 600) * 100);
+  const agePulse = Math.round((ageCycle(age) / 600) * 100);
   const maturity = ageMaturity(age);
 
   const rays = Array.from({ length: 8 }).map((_, idx) => {
@@ -137,14 +150,13 @@ export function OrganismInspector({ organism, selectedId, onDeselect }: Organism
       <div className="status-strip" aria-label="Organism status overview">
         <div className="status-card age-card">
           <span className="status-label">Age Pulse</span>
-          <div className="age-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={ageCyclePercent}>
-            <div className="age-meter-fill" style={{ width: `${ageCyclePercent}%` }} />
+          <div className="age-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={agePulse}>
+            <div className="age-meter-fill" style={{ width: `${agePulse}%` }} />
           </div>
-          <span className="status-value">Cycle {ageCyclePercent}%</span>
           <div className="age-maturity-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(maturity * 100)}>
             <div className="age-maturity-fill" style={{ width: `${Math.round(maturity * 100)}%` }} />
           </div>
-          <span className="status-value">Maturity {Math.round(maturity * 100)}%</span>
+          <span className="status-value">Maturity: {maturityLabel(maturity)}</span>
         </div>
         <div className="status-card speedometer-card">
           <span className="status-label">Speed</span>
@@ -204,10 +216,7 @@ export function OrganismInspector({ organism, selectedId, onDeselect }: Organism
             <div className="smell-arrow" style={{ transform: `translate(-50%, -100%) rotate(${smellRotationDeg}deg)`, opacity: smellVisualOpacity }} />
           </div>
           <div className="smell-info" aria-label={`Food scent ${smellDirection}, strength ${Math.round(smell * 100)} percent`}>
-            <div className="smell-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(smell * 100)}>
-              <div className="smell-fill" style={{ width: `${smell * 100}%` }} />
-            </div>
-            <div className="smell-strength-dots" aria-hidden="true">
+            <div className="smell-strength-dots" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(smell * 100)} aria-hidden="true">
               {Array.from({ length: 10 }).map((_, idx) => (
                 <span key={idx} className={idx < Math.round(smell * 10) ? 'dot active' : 'dot'} />
               ))}
