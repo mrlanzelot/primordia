@@ -1,137 +1,149 @@
-import { useEffect, useRef, useState } from 'react';
-import * as PIXI from 'pixi.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { HUD } from './components/HUD';
+import { OrganismInspector } from './components/OrganismInspector';
+import type { OrganismMsg } from './hooks/useWorldSocket';
+import { useWorldSocket } from './hooks/useWorldSocket';
+import { createStage, type StageBundle } from './pixi/stage';
 import './App.css';
 
-const BG_COLOR = 0x050505;
-const HIGH_ENERGY_COLOR = 0x3b82f6;
-const MID_ENERGY_COLOR = 0xfacc15;
-const LOW_ENERGY_COLOR = 0xef4444;
-const FOOD_COLOR = 0xfacc15;
-const INITIAL_ENERGY = 80;
-const ORGANISM_RADIUS = 12;
-const FOOD_RADIUS = 5;
-const WORLD_WIDTH = 1000;
-const WORLD_HEIGHT = 1000;
+const DEFAULT_WS_URL = 'ws://127.0.0.1:8080/ws';
 
-type ConnectionState = 'connecting' | 'connected' | 'closed' | 'error';
-interface OrganismMsg { id?: number; x?: number; y?: number; a?: number; e?: number; sv?: number[] }
-interface FoodMsg { x?: number; y?: number }
-interface WorldMessage { tick?: number; organisms?: OrganismMsg[]; foods?: FoodMsg[] }
+// postSpeedRate sends the selected simulation speed multiplier to the backend runtime control endpoint.
+async function postSpeedRate(rate: number): Promise<void> {
+  await fetch(`http://localhost:8080/speed?rate=${rate}`, { method: 'POST' });
+}
 
-const stateColor = (energy?: number) => {
-  const pct = ((energy ?? 0) / INITIAL_ENERGY) * 100;
-  if (pct > 67) return HIGH_ENERGY_COLOR;
-  if (pct < 33) return LOW_ENERGY_COLOR;
-  return MID_ENERGY_COLOR;
-};
+// postControlAction sends start/stop/restart commands to the backend runtime controls endpoint.
+async function postControlAction(action: 'start' | 'stop' | 'restart'): Promise<void> {
+  await fetch(`http://localhost:8080/control?action=${action}`, { method: 'POST' });
+}
 
 export default function App() {
-  const [pop, setPop] = useState(0);
-  const [connectionState, setConnectionState] = useState<ConnectionState>('connecting');
-  const [lastSeen, setLastSeen] = useState(0);
-  const [debug, setDebug] = useState('waiting');
-  const pixiContainer = useRef<HTMLDivElement>(null);
-  const appRef = useRef<PIXI.Application | null>(null);
-  const worldRef = useRef<PIXI.Container | null>(null);
-  const orgsRef = useRef<Map<number, PIXI.Graphics>>(new Map());
-  const foodLayerRef = useRef<PIXI.Container | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [activeRate, setActiveRate] = useState(1);
+  const [simState, setSimState] = useState<'running' | 'stopped'>('running');
+  const hostRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<StageBundle | null>(null);
+  const selectedIdRef = useRef<number | null>(null);
 
+  const wsURL = import.meta.env.VITE_WS_URL ?? DEFAULT_WS_URL;
+  const { world, connectionState, lastPacketAt } = useWorldSocket(wsURL);
+
+  const selected = useMemo<OrganismMsg | null>(() => {
+    if (!world || selectedId === null) {
+      return null;
+    }
+    return world.organisms.find((org) => org.id === selectedId) ?? null;
+  }, [world, selectedId]);
+
+  // Mirror selected id into a ref so ticker callbacks can read current value without re-subscribing.
   useEffect(() => {
-    const app = new PIXI.Application({ width: window.innerWidth, height: window.innerHeight, backgroundColor: BG_COLOR, antialias: true });
-    if (pixiContainer.current) pixiContainer.current.appendChild(app.view as HTMLCanvasElement);
-    appRef.current = app;
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
-    const world = new PIXI.Container();
-    worldRef.current = world;
-    app.stage.addChild(world);
+  // Initialize Pixi stage once and wire global pointer interaction for deselection.
+  useEffect(() => {
+    if (!hostRef.current) {
+      return;
+    }
 
-    const foodLayer = new PIXI.Container();
-    foodLayerRef.current = foodLayer;
-    world.addChild(foodLayer);
+    const stage = createStage(hostRef.current, (id) => setSelectedId(id));
+    stageRef.current = stage;
+    (stage.app.view as HTMLCanvasElement).style.cursor = 'crosshair';
 
-    const drawCamera = () => {
-      const scale = Math.min(window.innerWidth / WORLD_WIDTH, window.innerHeight / WORLD_HEIGHT);
-      world.scale.set(scale, scale);
-      world.x = (window.innerWidth - WORLD_WIDTH * scale) / 2;
-      world.y = (window.innerHeight - WORLD_HEIGHT * scale) / 2;
-    };
-    drawCamera();
+    stage.app.stage.eventMode = 'static';
+    stage.app.stage.hitArea = stage.app.screen;
+    stage.app.stage.on('pointerdown', () => {
+      setSelectedId(null);
+    });
 
-    const center = new PIXI.Graphics();
-    center.lineStyle(1, 0x222222, 0.9);
-    center.moveTo(WORLD_WIDTH / 2, 0);
-    center.lineTo(WORLD_WIDTH / 2, WORLD_HEIGHT);
-    center.moveTo(0, WORLD_HEIGHT / 2);
-    center.lineTo(WORLD_WIDTH, WORLD_HEIGHT / 2);
-    world.addChild(center);
+    const onResize = () => stage.resizeToViewport();
+    window.addEventListener('resize', onResize);
 
-    const marker = new PIXI.Graphics();
-    marker.beginFill(0xff00ff);
-    marker.drawRect(WORLD_WIDTH / 2 - 10, WORLD_HEIGHT / 2 - 10, 20, 20);
-    marker.endFill();
-    world.addChild(marker);
+    stage.app.ticker.add(() => {
+      const seconds = stage.app.ticker.lastTime / 1000;
+      stage.foodLayer.animate(seconds);
+      stage.organismLayer.animate(seconds, selectedIdRef.current);
+    });
 
-    const ws = new WebSocket(import.meta.env.VITE_WS_URL ?? 'ws://127.0.0.1:8080/ws');
-    const handleResize = () => {
-      appRef.current?.renderer.resize(window.innerWidth, window.innerHeight);
-      drawCamera();
-    };
-    window.addEventListener('resize', handleResize);
-    ws.onopen = () => setConnectionState('connected');
-    ws.onerror = () => setConnectionState('error');
-    ws.onclose = () => setConnectionState('closed');
-    ws.onmessage = (e) => {
-      const data = JSON.parse(e.data) as WorldMessage;
-      const orgs = data.organisms || [];
-      const food = data.foods || [];
-      setLastSeen(Date.now());
-      setPop(orgs.length);
-      const firstOrg = orgs[0];
-      const fx = firstOrg?.x;
-      const fy = firstOrg?.y;
-      setDebug(firstOrg && typeof fx === 'number' && typeof fy === 'number'
-        ? `first org: ${Math.round(fx)},${Math.round(fy)} scale:${world.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`
-        : `first org: missing scale:${world.scale.x.toFixed(2)} size:${window.innerWidth}x${window.innerHeight}`);
-      if (foodLayerRef.current) {
-        foodLayerRef.current.removeChildren().forEach((child) => child.destroy());
-        food.forEach((item) => {
-          const x = item.x;
-          const y = item.y;
-          if (typeof x !== 'number' || typeof y !== 'number') return;
-          const graphic = new PIXI.Graphics();
-          graphic.beginFill(FOOD_COLOR);
-          graphic.drawCircle(x, y, FOOD_RADIUS);
-          graphic.endFill();
-          foodLayerRef.current?.addChild(graphic);
-        });
-      }
-      orgs.forEach((org) => {
-        const id = org.id;
-        const x = org.x;
-        const y = org.y;
-        if (typeof x !== 'number' || typeof y !== 'number') return;
-        if (typeof id !== 'number') return;
-        let graphic = orgsRef.current.get(id);
-        if (!graphic) { graphic = new PIXI.Graphics(); world.addChild(graphic); orgsRef.current.set(id, graphic); }
-        graphic.clear(); graphic.beginFill(stateColor(org.e)); graphic.drawCircle(x, y, ORGANISM_RADIUS); graphic.endFill();
-      });
-      const orgIDs = new Set(orgs.map((org) => org.id).filter((id): id is number => typeof id === 'number'));
-      orgsRef.current.forEach((val, key) => {
-        if (!orgIDs.has(key)) {
-          world.removeChild(val);
-          orgsRef.current.delete(key);
-        }
-      });
-    };
     return () => {
-      window.removeEventListener('resize', handleResize);
-      ws.close();
-      orgsRef.current.clear();
-      foodLayerRef.current?.removeChildren().forEach((child) => child.destroy());
-      app.destroy(true, true);
+      window.removeEventListener('resize', onResize);
+      stage.destroy();
+      stageRef.current = null;
     };
   }, []);
 
-  const staleMs = lastSeen ? Date.now() - lastSeen : 0;
-  return <div className="app-shell"><div className="overlay"><h1>PRIMORDIA ENGINE</h1><p>Population: {pop}</p><p>Connection: {connectionState}</p><p>Last packet: {staleMs ? `${Math.round(staleMs / 1000)}s ago` : 'none'}</p><p>{debug}</p></div><div ref={pixiContainer} /></div>;
+  // Apply incoming world snapshots onto pooled Pixi layers.
+  useEffect(() => {
+    if (!stageRef.current || !world) {
+      return;
+    }
+
+    if (selectedId !== null) {
+      const stillPresent = world.organisms.some((o) => o.id === selectedId);
+      if (!stillPresent) {
+        setSelectedId(null);
+      }
+    }
+
+    stageRef.current.foodLayer.update(world.foods);
+    stageRef.current.organismLayer.update(world.organisms, selectedId);
+
+    const selectedOrganism = selectedId === null
+      ? null
+      : world.organisms.find((org) => org.id === selectedId) ?? null;
+
+    stageRef.current.senseLayer.draw(selectedOrganism);
+  }, [world, selectedId]);
+
+  const staleMs = lastPacketAt ? Date.now() - lastPacketAt : 0;
+  const tick = world?.tick ?? 0;
+  const population = world?.organisms.length ?? 0;
+  const foodCount = world?.foods.length ?? 0;
+
+  useEffect(() => {
+    if (population === 0) {
+      setSimState('stopped');
+    }
+  }, [population]);
+
+  return (
+    <div className="app-shell">
+      <div className="grain" />
+      <HUD
+        tick={tick}
+        population={population}
+        food={foodCount}
+        activeRate={activeRate}
+        simState={simState}
+        connectionState={connectionState}
+        onRateChange={(rate) => {
+          void postSpeedRate(rate).then(() => {
+            setActiveRate(rate);
+          });
+        }}
+        onControl={(action) => {
+          void postControlAction(action).then(() => {
+            if (action === 'start') {
+              setSimState('running');
+            } else if (action === 'stop') {
+              setSimState('stopped');
+            } else {
+              setSimState('running');
+            }
+          });
+        }}
+      />
+
+      <div className="meta-strip">Last packet {staleMs ? `${Math.round(staleMs / 1000)}s ago` : 'none'}</div>
+
+      <OrganismInspector
+        organism={selected}
+        selectedId={selectedId}
+        onDeselect={() => setSelectedId(null)}
+      />
+
+      <div ref={hostRef} className="canvas-host" />
+    </div>
+  );
 }

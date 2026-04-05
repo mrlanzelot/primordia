@@ -6,6 +6,7 @@ import (
 	"github.com/martin/primordia/internal/spatial"
 )
 
+// ApplyEating transfers energy from nearby food to organisms and removes consumed food.
 func ApplyEating(orgs map[uint64]*organism.Organism, foods map[uint64]*food.Food, grid *spatial.Grid) {
 	eaten := make(map[uint64]struct{})
 	for _, org := range orgs {
@@ -25,6 +26,9 @@ func ApplyEating(orgs map[uint64]*organism.Organism, foods map[uint64]*food.Food
 			dy := org.Pos.Y - f.Pos.Y
 			if dx*dx+dy*dy < EatDistanceSq {
 				org.Energy += EnergyFromFood
+				if org.Energy > MaxEnergy {
+					org.Energy = MaxEnergy
+				}
 				org.HasFood = true
 				org.FoodX, org.FoodY = f.Pos.X, f.Pos.Y
 				org.State = CellStateExploitCircle

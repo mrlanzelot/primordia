@@ -42,6 +42,7 @@ const (
 	CellStateReorient      = "reorient"
 )
 
+// normalize converts a direction vector to unit length with zero fallback.
 func normalize(x, y float64) (float64, float64) {
 	l := math.Hypot(x, y)
 	if l == 0 {
@@ -50,11 +51,13 @@ func normalize(x, y float64) (float64, float64) {
 	return x / l, y / l
 }
 
+// rotate rotates a vector in 2D space by angle a.
 func rotate(x, y, a float64) (float64, float64) {
 	c, s := math.Cos(a), math.Sin(a)
 	return x*c - y*s, x*s + y*c
 }
 
+// wrapAngle constrains an angle to [-pi, pi] for stable steering math.
 func wrapAngle(a float64) float64 {
 	for a > math.Pi {
 		a -= 2 * math.Pi
@@ -65,6 +68,7 @@ func wrapAngle(a float64) float64 {
 	return a
 }
 
+// steerToward limits heading change toward a target direction by maxTurn.
 func steerToward(curX, curY, targetX, targetY, maxTurn float64) (float64, float64) {
 	curX, curY = normalize(curX, curY)
 	targetX, targetY = normalize(targetX, targetY)
@@ -79,29 +83,35 @@ func steerToward(curX, curY, targetX, targetY, maxTurn float64) (float64, float6
 	return rotate(curX, curY, delta)
 }
 
+// randPlanTicks picks how long an organism keeps its current wander plan.
 func randPlanTicks() int {
 	return PlanTicksMin + rand.Intn(PlanTicksMax-PlanTicksMin+1)
 }
 
+// shouldAvoidWall flags organisms that are close enough to boundaries to steer inward.
 func shouldAvoidWall(p organism.Vec2) bool {
 	return p.X < WallAvoidMargin || p.X > WorldWidth-WallAvoidMargin || p.Y < WallAvoidMargin || p.Y > WorldHeight-WallAvoidMargin
 }
 
+// inwardTarget returns the normalized direction toward world center.
 func inwardTarget(p organism.Vec2) (float64, float64) {
 	return normalize((WorldWidth/2)-p.X, (WorldHeight/2)-p.Y)
 }
 
+// randomWanderTarget perturbs the current heading to create exploratory motion.
 func randomWanderTarget(dirX, dirY float64) (float64, float64) {
 	turn := (rand.Float64()-0.5)*0.8 + (rand.Float64()-0.5)*SearchWobble
 	return normalize(rotate(dirX, dirY, turn))
 }
 
+// blendDirection mixes two headings with a weighted influence.
 func blendDirection(baseX, baseY, addX, addY, weight float64) (float64, float64) {
 	bx, by := normalize(baseX, baseY)
 	ax, ay := normalize(addX, addY)
 	return normalize(bx*(1-weight)+ax*weight, by*(1-weight)+ay*weight)
 }
 
+// nearestFood finds the closest food position within a squared-distance limit.
 func nearestFood(x, y float64, maxSq float64, foods map[uint64]*food.Food) (float64, float64, bool) {
 	best := maxSq
 	var bx, by float64
@@ -119,6 +129,7 @@ func nearestFood(x, y float64, maxSq float64, foods map[uint64]*food.Food) (floa
 	return bx, by, found
 }
 
+// NewOrganism initializes one organism with random spawn and search state defaults.
 func NewOrganism(id uint64) *organism.Organism {
 	ang := rand.Float64() * 2 * math.Pi
 	x, y := math.Cos(ang), math.Sin(ang)

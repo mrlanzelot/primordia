@@ -2,6 +2,7 @@ package world
 
 import "testing"
 
+// TestNewSeedsPopulation verifies constructor wiring for initial organisms and grid.
 func TestNewSeedsPopulation(t *testing.T) {
 	w := New()
 	if len(w.Organisms) != InitialPopulation {

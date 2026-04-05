@@ -29,11 +29,12 @@ Simulation update is split into systems in `internal/systems`:
 
 1. Initialize Pixi Application fullscreen
 2. Open websocket connection (`VITE_WS_URL`)
-3. Parse incoming world messages
-4. Upsert organism graphics by id
-5. Redraw food points from current snapshot
-6. Remove graphics for missing organisms
-7. Show lightweight overlay metadata (population, connection)
+3. Parse incoming world messages via reconnecting socket hook
+4. Upsert food and organism graphics via pooled layer objects
+5. Draw sense rays only for locally selected organism
+6. Update HUD and fixed inspector panel (no canvas layout reflow)
+7. Handle local organism selection/deselection with Pixi pointer events
+8. Send speed-control POST requests to `/speed?rate={n}`
 
 ## Concurrency and Safety
 
@@ -46,6 +47,7 @@ Simulation update is split into systems in `internal/systems`:
 
 - Protocol is full-state broadcast, not delta-based.
 - Brain system is currently a random-walk stub.
+- `/speed` is currently a backend stub and does not yet alter simulation tick cadence.
 - No persistence layer is active yet.
 
 ## Next Structural Step

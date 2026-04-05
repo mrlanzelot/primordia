@@ -8,22 +8,27 @@ type Vec2 struct {
 	Y float64
 }
 
+// Add combines two vectors component-wise.
 func (v Vec2) Add(o Vec2) Vec2 {
 	return Vec2{X: v.X + o.X, Y: v.Y + o.Y}
 }
 
+// Sub computes the vector from o to v.
 func (v Vec2) Sub(o Vec2) Vec2 {
 	return Vec2{X: v.X - o.X, Y: v.Y - o.Y}
 }
 
+// Scale multiplies a vector by a scalar magnitude.
 func (v Vec2) Scale(s float64) Vec2 {
 	return Vec2{X: v.X * s, Y: v.Y * s}
 }
 
+// Length returns Euclidean magnitude.
 func (v Vec2) Length() float64 {
 	return math.Hypot(v.X, v.Y)
 }
 
+// Normalize turns a vector into unit length while guarding zero vectors.
 func (v Vec2) Normalize() Vec2 {
 	l := v.Length()
 	if l == 0 {
@@ -32,6 +37,7 @@ func (v Vec2) Normalize() Vec2 {
 	return Vec2{X: v.X / l, Y: v.Y / l}
 }
 
+// Rotate applies a 2D rotation matrix by angle a.
 func Rotate(v Vec2, a float64) Vec2 {
 	c, s := math.Cos(a), math.Sin(a)
 	return Vec2{X: v.X*c - v.Y*s, Y: v.X*s + v.Y*c}

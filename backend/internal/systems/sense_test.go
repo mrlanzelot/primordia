@@ -9,6 +9,7 @@ import (
 	"github.com/martin/primordia/internal/spatial"
 )
 
+// TestSenseDetectsFoodInFront validates ray and smell channels register forward food.
 func TestSenseDetectsFoodInFront(t *testing.T) {
 	org := &organism.Organism{
 		ID:     1,

@@ -1,6 +1,11 @@
 package protocol
 
-import "github.com/martin/primordia/internal/world"
+import (
+	"math"
+
+	"github.com/martin/primordia/internal/systems"
+	"github.com/martin/primordia/internal/world"
+)
 
 type OrganismMsg struct {
 	ID       uint64    `json:"id"`
@@ -8,6 +13,7 @@ type OrganismMsg struct {
 	Y        float32   `json:"y"`
 	Angle    float32   `json:"a"`
 	Energy   float32   `json:"e"`
+	Age      int       `json:"age"`
 	SenseVec []float32 `json:"sv,omitempty"`
 	Selected bool      `json:"sel,omitempty"`
 }
@@ -23,6 +29,21 @@ type WorldMsg struct {
 	Foods     []FoodMsg     `json:"foods"`
 }
 
+func normalizeEnergy(v float64) float32 {
+	if systems.MaxEnergy <= 0 {
+		return 0
+	}
+	n := v / systems.MaxEnergy
+	if n < 0 {
+		n = 0
+	}
+	if n > 1 {
+		n = 1
+	}
+	return float32(math.Round(n*1000) / 1000)
+}
+
+// Snapshot converts the current world model into a frontend wire payload.
 func Snapshot(w *world.World) WorldMsg {
 	w.Mu.RLock()
 	defer w.Mu.RUnlock()
@@ -38,7 +59,8 @@ func Snapshot(w *world.World) WorldMsg {
 			X:      float32(org.Pos.X),
 			Y:      float32(org.Pos.Y),
 			Angle:  float32(org.Angle),
-			Energy: float32(org.Energy),
+			Energy: normalizeEnergy(org.Energy),
+			Age:    org.Age,
 		}
 		if len(org.SenseVec) > 0 {
 			o.SenseVec = make([]float32, len(org.SenseVec))

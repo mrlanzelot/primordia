@@ -9,7 +9,7 @@ type ActionVec struct {
 	EatFlag   float64
 }
 
-// Think takes a sense vector and returns an action vector.
+// Think is a placeholder policy that ignores inputs and emits bounded random-walk actions.
 // TODO: replace with neural network forward pass in Phase 2.
 func Think(sv []float64) ActionVec {
 	_ = sv

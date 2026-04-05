@@ -14,7 +14,7 @@ The current milestone is Phase 1: Emergence Explorer.
 
 - Backend simulation loop in Go with internal package split
 - WebSocket broadcast of world state
-- Frontend visualization with React + PixiJS
+- Frontend visualization with React + PixiJS layered renderer, inspector, and HUD speed controls
 
 ## Prerequisites
 
@@ -55,6 +55,9 @@ Backend binary output:
 	- `internal/protocol`: wire protocol snapshot types
 	- `internal/server`: websocket hub
 - `frontend/`: React + PixiJS visualization client.
+	- `src/pixi`: stage + render layers (organism, food, sense)
+	- `src/hooks/useWorldSocket.ts`: reconnecting websocket client
+	- `src/components`: HUD + organism inspector UI
 - `docs/`: Project documentation (architecture, protocol, file map).
 - `.agent/`: Team workflow, standards, requirements, roadmap.
 - `HEARTBEAT.md`: Current sprint/objectives status.

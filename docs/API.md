@@ -20,8 +20,9 @@ The backend broadcasts a world snapshot as JSON.
       "x": 120.2,
       "y": 88.6,
       "a": 0.79,
-      "e": 96.3,
-      "sv": [0.12, 1, 0.34, 0, 1, 0]
+      "e": 0.96,
+      "sv": [0.12, 1, 0.34, 0, 1, 0],
+      "sel": false
     }
   ],
   "foods": [
@@ -38,8 +39,9 @@ The backend broadcasts a world snapshot as JSON.
 - `x`: horizontal coordinate (0..WorldWidth)
 - `y`: vertical coordinate (0..WorldHeight)
 - `a`: heading in radians
-- `e`: current energy level
+- `e`: normalized energy level (0..1)
 - `sv`: optional 21-value sense vector
+- `sel`: optional frontend selection hint
 
 ### Food
 
@@ -56,6 +58,16 @@ The backend broadcasts a world snapshot as JSON.
 
 - Simulation update: every 30ms (`TickRate`)
 - WebSocket broadcast: every 40ms (`BroadcastRate`)
+
+## Control Endpoints
+
+### Speed Stub
+
+- Method: `POST`
+- Endpoint: `/speed?rate={n}`
+- Example: `POST http://localhost:8080/speed?rate=2`
+- Purpose: control-plane hook for frontend speed controls
+- Current behavior: validates/parses rate and acknowledges (`204 No Content`), does not yet mutate simulation runtime speed
 
 ## Compatibility Notes
 

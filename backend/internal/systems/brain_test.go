@@ -2,6 +2,7 @@ package systems
 
 import "testing"
 
+// TestThinkOutputRange ensures random-walk stub output stays within expected control bounds.
 func TestThinkOutputRange(t *testing.T) {
 	out := Think(make([]float64, 21))
 	if out.Thrust < 0.5 || out.Thrust > 1.0 {

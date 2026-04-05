@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -19,6 +20,7 @@ const (
 	BroadcastRate = 40 * time.Millisecond
 )
 
+// main bootstraps process state, starts simulation/broadcast loops, and serves HTTP endpoints.
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -26,16 +28,53 @@ func main() {
 
 	w := world.New()
 	srv := server.New(w, BroadcastRate)
+	var tickIntervalNS atomic.Int64
+	var running atomic.Bool
+	running.Store(true)
+	tickIntervalNS.Store(TickRate.Nanoseconds())
+	srv.SetSpeedController(1, func(rate float64) {
+		if rate <= 0 {
+			return
+		}
+		tickIntervalNS.Store(time.Duration(float64(TickRate) / rate).Nanoseconds())
+	})
+	srv.SetControlHandler(func(action string) bool {
+		switch action {
+		case "start":
+			running.Store(true)
+			return true
+		case "stop":
+			running.Store(false)
+			return true
+		case "restart":
+			w.Reset()
+			running.Store(true)
+			return true
+		default:
+			return false
+		}
+	})
 
 	engineDone := make(chan struct{})
 	go func() {
-		ticker := time.NewTicker(TickRate)
-		defer ticker.Stop()
 		for {
+			tickDelay := time.Duration(tickIntervalNS.Load())
+			timer := time.NewTimer(tickDelay)
 			select {
-			case <-ticker.C:
-				w.Tick()
+			case <-timer.C:
+				if running.Load() {
+					w.Tick()
+					if w.OrganismCount() == 0 {
+						running.Store(false)
+					}
+				}
 			case <-engineDone:
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
 				return
 			}
 		}
@@ -45,6 +84,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", srv.WSHandler)
+	mux.HandleFunc("/speed", srv.SpeedHandler)
+	mux.HandleFunc("/control", srv.ControlHandler)
 	httpServer := &http.Server{Addr: ":8080", Handler: mux}
 
 	go func() {

@@ -2,6 +2,7 @@ package food
 
 import "testing"
 
+// TestSpawnRandomWithinBounds validates random food spawn respects map bounds.
 func TestSpawnRandomWithinBounds(t *testing.T) {
 	f := SpawnRandom(7, 100, 200)
 	if f.ID != 7 {

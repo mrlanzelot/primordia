@@ -108,4 +108,69 @@ Add a React component `` that appears when an organism is selected.
 
 **Contents**:
 ```
-┌
+┌─────────────────────────────┐
+│ ORGANISM #4821              │
+│ ─────────────────────────── │
+│ Energy    ████████░░  78%   │
+│ Age       1,204 ticks       │
+│ Speed     0.34 u/tick       │
+│                             │
+│ SENSE INPUT                 │
+│ [mini heatmap of SenseVec]  │
+│                             │
+│ [Deselect]                  │
+└─────────────────────────────┘
+```
+
+- Energy bar: CSS progress bar, color interpolates dim→bright teal matching organism tint
+- Sense heatmap: a row of 21 small colored squares representing each `sv` float (0=dark, 1=bright). Group visually: first 16 (rays) | next 3 (smell) | last 2 (self)
+- Clicking anywhere on the canvas that is NOT an organism deselects
+- Clicking an organism: send its ID to a React state `selectedId`, the backend does not need to be notified — the frontend filters `sv` from the broadcast
+
+**Selection interaction (PixiJS side)**:
+- Make each organism `Graphics` object interactive: `organism.eventMode = 'static'`
+- On `pointerdown`, call `onSelect(id)` callback passed from React
+- Cursor: `crosshair` on the canvas element
+
+---
+
+## Task 5 — HUD overlay refinements
+
+Update the existing lightweight overlay:
+
+- Font: `DM Mono`, 11px, color `rgba(255,255,255,0.5)`
+- Show: `TICK {n}` · `POP {n}` · `FOOD {n}` · connection status dot (green/red)
+- Position: top-right, `16px` margin, no background — just text with `text-shadow: 0 1px 4px #000`
+- Add a **speed control**: a row of buttons `0.5×  1×  2×  4×` that POST to `http://localhost:8080/speed?rate={n}` (backend endpoint — add a stub if not present)
+
+---
+
+## File structure
+
+Organise new code as follows:
+
+```
+frontend/src/
+├── pixi/
+│   ├── OrganismLayer.ts    # organism graphics, selection, energy tint
+│   ├── FoodLayer.ts        # food particle graphics
+│   ├── SenseLayer.ts       # ray + hit point rendering for selected organism
+│   └── stage.ts            # PixiJS app init, layer composition
+├── components/
+│   ├── OrganismInspector.tsx
+│   └── HUD.tsx
+├── hooks/
+│   └── useWorldSocket.ts   # WebSocket consumer, returns WorldMsg stream
+└── App.tsx                 # top-level layout, state: selectedId
+```
+
+---
+
+## Constraints
+
+- PixiJS v7 API — do not use v8 syntax
+- No new npm dependencies beyond what is already installed, except `@google/fonts` import via CSS `@import` for DM Mono
+- All PixiJS graphics must use object pooling — never create a new `PIXI.Graphics` for an entity that already exists, only update its properties
+- `useWorldSocket` must handle reconnect with exponential backoff (max 8s)
+- The inspector panel must not cause layout reflow on the canvas — use `position: fixed`
+- TypeScript strict mode — no `any` types

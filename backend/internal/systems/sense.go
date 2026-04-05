@@ -15,20 +15,23 @@ const (
 	senseRayStep     = 5.0
 	senseHitRadius   = 5.0
 	smellRadius      = 200.0
-	smellScaleFactor = 50.0
+	smellScaleFactor = 0.05
+	speedSenseScale  = 1.7
 )
 
+// UpdateSense rebuilds each organism's 21-value sense vector for brain input.
 func UpdateSense(orgs map[uint64]*organism.Organism, foods map[uint64]*food.Food, grid *spatial.Grid) {
 	for _, org := range orgs {
 		sv := make([]float64, 21)
 		fillRaySense(sv, org, orgs, foods, grid)
 		fillSmellSense(sv, org, foods, grid)
 		sv[19] = clamp01(org.Energy / MaxEnergy)
-		sv[20] = clamp01(org.Vel.Length() / MaxSpeed)
+		sv[20] = clamp01(org.Vel.Length() / (MaxSpeed * speedSenseScale))
 		org.SenseVec = sv
 	}
 }
 
+// fillRaySense traces forward-arc rays and stores first-hit distance/type pairs.
 func fillRaySense(sv []float64, org *organism.Organism, orgs map[uint64]*organism.Organism, foods map[uint64]*food.Food, grid *spatial.Grid) {
 	start := org.Angle - (senseArcRadians / 2)
 	stepA := senseArcRadians / float64(senseRayCount-1)
@@ -80,6 +83,7 @@ func fillRaySense(sv []float64, org *organism.Organism, orgs map[uint64]*organis
 	}
 }
 
+// fillSmellSense estimates local food gradient strength and direction.
 func fillSmellSense(sv []float64, org *organism.Organism, foods map[uint64]*food.Food, grid *spatial.Grid) {
 	var rawX, rawY float64
 	ids := grid.QueryRadius(org.Pos, smellRadius)
@@ -118,6 +122,7 @@ func fillSmellSense(sv []float64, org *organism.Organism, foods map[uint64]*food
 	sv[18] = dirY
 }
 
+// clamp01 bounds normalized sensor values into [0, 1].
 func clamp01(v float64) float64 {
 	if v < 0 {
 		return 0

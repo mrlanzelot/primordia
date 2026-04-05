@@ -22,13 +22,20 @@ This guide explains what each important file is responsible for.
 - `backend/internal/systems/sense.go`: sensor vector generation system.
 - `backend/internal/systems/brain.go`: Phase 2 brain placeholder.
 - `backend/internal/protocol/protocol.go`: WebSocket message schema and snapshot encoder.
-- `backend/internal/server/server.go`: websocket client registry and broadcast loop.
+- `backend/internal/server/server.go`: websocket client registry, broadcast loop, and speed control stub endpoint.
 
 ## Frontend
 
 - `frontend/src/main.tsx`: React application bootstrap.
-- `frontend/src/App.tsx`: websocket handling and Pixi rendering loop.
-- `frontend/src/App.css`: app shell and overlay styles.
+- `frontend/src/App.tsx`: top-level composition (stage, HUD, inspector, selected state).
+- `frontend/src/hooks/useWorldSocket.ts`: websocket lifecycle with reconnect backoff.
+- `frontend/src/pixi/stage.ts`: Pixi app initialization and layer composition.
+- `frontend/src/pixi/OrganismLayer.ts`: organism rendering, pooling, and selection interaction.
+- `frontend/src/pixi/FoodLayer.ts`: food rendering and pulse animation with delta upsert.
+- `frontend/src/pixi/SenseLayer.ts`: selected-organism sense ray rendering.
+- `frontend/src/components/HUD.tsx`: telemetry and speed controls.
+- `frontend/src/components/OrganismInspector.tsx`: fixed-position organism inspector and sense heatmap.
+- `frontend/src/App.css`: deep-ocean styling, grain overlay, HUD and inspector styles.
 - `frontend/src/index.css`: global reset and viewport sizing.
 - `frontend/index.html`: host document and app mount point.
 - `frontend/vite.config.ts`: Vite dev/build config.

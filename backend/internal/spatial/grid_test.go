@@ -6,6 +6,7 @@ import (
 	"github.com/martin/primordia/internal/organism"
 )
 
+// TestInsertAndQueryRadius verifies grid bucketing finds nearby ids and excludes far ones.
 func TestInsertAndQueryRadius(t *testing.T) {
 	g := New(10)
 	g.Insert(1, organism.Vec2{X: 5, Y: 5})

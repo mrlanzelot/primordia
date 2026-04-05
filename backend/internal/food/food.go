@@ -11,6 +11,7 @@ type Food struct {
 	Pos organism.Vec2
 }
 
+// SpawnRandom creates one food entity at a random position within world bounds.
 func SpawnRandom(id uint64, width, height float64) *Food {
 	return &Food{
 		ID: id,
