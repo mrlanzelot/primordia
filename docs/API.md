@@ -9,23 +9,24 @@
 
 ## Message Format (Current)
 
-The backend broadcasts the world as JSON.
+The backend broadcasts a world snapshot as JSON.
 
 ```json
 {
-  "orgs": {
-    "1": {
+  "tick": 210,
+  "organisms": [
+    {
       "id": 1,
-      "pos": { "x": 120.2, "y": 88.6 },
-      "energy": 96.3
+      "x": 120.2,
+      "y": 88.6,
+      "a": 0.79,
+      "e": 96.3,
+      "sv": [0.12, 1, 0.34, 0, 1, 0]
     }
-  },
-  "food": {
-    "50": {
-      "id": 50,
-      "pos": { "x": 301.1, "y": 552.4 }
-    }
-  }
+  ],
+  "foods": [
+    { "x": 301.1, "y": 552.4 }
+  ]
 }
 ```
 
@@ -34,15 +35,22 @@ The backend broadcasts the world as JSON.
 ### Organism
 
 - `id`: numeric identifier
-- `pos.x`: horizontal coordinate (0..WorldWidth)
-- `pos.y`: vertical coordinate (0..WorldHeight)
-- `energy`: current energy level
+- `x`: horizontal coordinate (0..WorldWidth)
+- `y`: vertical coordinate (0..WorldHeight)
+- `a`: heading in radians
+- `e`: current energy level
+- `sv`: optional 21-value sense vector
 
 ### Food
 
-- `id`: numeric identifier
-- `pos.x`: horizontal coordinate
-- `pos.y`: vertical coordinate
+- `x`: horizontal coordinate
+- `y`: vertical coordinate
+
+### World
+
+- `tick`: simulation tick counter
+- `organisms`: current organism snapshot list
+- `foods`: current food snapshot list
 
 ## Update Rates
 
@@ -51,11 +59,11 @@ The backend broadcasts the world as JSON.
 
 ## Compatibility Notes
 
-- Frontend currently renders only `orgs`.
-- `food` is transmitted but not yet visualized.
+- Frontend renders both `organisms` and `foods`.
+- `sv` is included for organism sensing/inspection and can be omitted for lightweight clients.
 
 ## Planned Changes
 
-- Add message envelope (`type`, `tick`, `payload`)
-- Add optional delta updates
-- Add client command messages (pause/reset/spawn)
+- Integrate brain outputs into movement system (Phase 2)
+- Add selection state and client-side inspection overlays
+- Add optional delta updates for lower bandwidth

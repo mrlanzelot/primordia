@@ -6,7 +6,7 @@ The frontend is a lightweight React shell around a PixiJS renderer.
 
 - Maintain UI metadata (population count, connection status).
 - Connect to backend websocket feed.
-- Render organisms each tick as circles in a fullscreen canvas.
+- Render organisms and food each tick in a fullscreen canvas.
 
 ## Run Frontend Only
 
@@ -43,13 +43,14 @@ Expected message shape:
 
 ```json
 {
-  "orgs": {
-    "1": { "pos": { "x": 100, "y": 200 }, "energy": 84.2 }
-  },
-  "food": {
-    "101": { "id": 101, "pos": { "x": 300, "y": 400 } }
-  }
+  "tick": 42,
+  "organisms": [
+    { "id": 1, "x": 100, "y": 200, "a": 0.31, "e": 84.2, "sv": [0.4, 1] }
+  ],
+  "foods": [
+    { "x": 300, "y": 400 }
+  ]
 }
 ```
 
-Only `orgs` is currently rendered in the UI.
+Organism `sv` (sense vector) may be omitted in lightweight payloads.

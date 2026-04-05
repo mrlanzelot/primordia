@@ -13,17 +13,17 @@ The backend is the source of truth. The frontend consumes websocket state and dr
 
 Main runtime flow:
 
-1. Create world maps (`Organisms`, `Food`)
-2. Seed initial population
-3. Start simulation tick loop (`TickRate`)
-4. Accept websocket clients on `/ws`
-5. Broadcast serialized world at `BroadcastRate`
+1. Create world state (`internal/world`), uniform grid, and seed population
+2. Start simulation tick loop (`TickRate`)
+3. Accept websocket clients on `/ws` (`internal/server`)
+4. Broadcast protocol snapshots at `BroadcastRate` (`internal/protocol`)
 
-Simulation update is split into three systems:
+Simulation update is split into systems in `internal/systems`:
 
-1. `updateOrganisms`: movement, boundary clamp, energy decay, death
-2. `spawnFood`: food cap enforcement and random spawn
-3. `applyEating`: proximity checks and energy gain
+1. `sense`: fills `SenseVec` (raycast + smell + self sensors)
+2. `movement`: movement, boundary clamp, energy decay, death
+3. `eating`: proximity checks and energy gain via spatial query
+4. `food`: food cap enforcement and random spawn
 
 ## Frontend Flow
 
@@ -31,8 +31,9 @@ Simulation update is split into three systems:
 2. Open websocket connection (`VITE_WS_URL`)
 3. Parse incoming world messages
 4. Upsert organism graphics by id
-5. Remove graphics for missing organisms
-6. Show lightweight overlay metadata (population, connection)
+5. Redraw food points from current snapshot
+6. Remove graphics for missing organisms
+7. Show lightweight overlay metadata (population, connection)
 
 ## Concurrency and Safety
 
@@ -43,15 +44,17 @@ Simulation update is split into three systems:
 
 ## Known Limitations
 
-- Backend is still in one file (`backend/main.go`).
 - Protocol is full-state broadcast, not delta-based.
-- Rendering does not yet draw food or trajectories.
+- Brain system is currently a random-walk stub.
 - No persistence layer is active yet.
 
 ## Next Structural Step
 
-Split backend into packages:
+Phase 1 backend refactor is complete with package split:
 
-- `backend/sim`: world + systems
-- `backend/net`: websocket server/protocol
-- `backend/cmd/engine`: entrypoint
+- `backend/cmd/primordia`: entrypoint and process wiring
+- `backend/internal/world`: world state and tick orchestration
+- `backend/internal/systems`: movement/eating/sense/brain/food systems
+- `backend/internal/spatial`: uniform grid
+- `backend/internal/server`: websocket hub and handler
+- `backend/internal/protocol`: frontend wire format

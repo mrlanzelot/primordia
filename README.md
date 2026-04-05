@@ -12,7 +12,7 @@ Primordia is a simulation project exploring how complex behavior and intelligenc
 
 The current milestone is Phase 1: Emergence Explorer.
 
-- Backend simulation loop in Go
+- Backend simulation loop in Go with internal package split
 - WebSocket broadcast of world state
 - Frontend visualization with React + PixiJS
 
@@ -48,6 +48,12 @@ Backend binary output:
 ## Folder Guide
 
 - `backend/`: Go simulation engine and WebSocket server.
+	- `cmd/primordia`: entrypoint
+	- `internal/world`: world and tick lifecycle
+	- `internal/systems`: movement/eating/sense/brain systems
+	- `internal/spatial`: uniform spatial grid
+	- `internal/protocol`: wire protocol snapshot types
+	- `internal/server`: websocket hub
 - `frontend/`: React + PixiJS visualization client.
 - `docs/`: Project documentation (architecture, protocol, file map).
 - `.agent/`: Team workflow, standards, requirements, roadmap.

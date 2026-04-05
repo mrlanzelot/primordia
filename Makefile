@@ -17,14 +17,14 @@ dev: ## Run both Backend and Frontend in parallel
 
 .PHONY: build
 build: ## Build production binaries/bundles
-	cd $(BACKEND_DIR) && go build -o ../bin/primordia-engine main.go
+	cd $(BACKEND_DIR) && go build -o ../bin/primordia-engine ./cmd/primordia
 	cd $(FRONTEND_DIR) && npm run build
 
 # --- Helper Commands ---
 
 run-backend:
 	@echo "🚀 Starting Go Engine..."
-	cd $(BACKEND_DIR) && go run main.go
+	cd $(BACKEND_DIR) && go run ./cmd/primordia
 
 run-frontend:
 	@echo "🎨 Starting React/PixiJS UI (Vite)..."
