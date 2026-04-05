@@ -267,10 +267,17 @@ func UpdateOrganisms(orgs map[uint64]*organism.Organism, foods map[uint64]*food.
 			tx, ty := -uy, ux
 
 			phase := float64(org.Timer) * 0.35
-			desiredRadius := 14 + 8*math.Sin(phase)
-			desiredRadius = math.Max(8, desiredRadius)
+			// Keep exploit orbits mostly inside eat distance to avoid starvation loops.
+			desiredRadius := 8 + 2*math.Sin(phase)
+			desiredRadius = math.Max(6, desiredRadius)
+			radialGain := 0.22
+			tangentWeight := 1.0
+			if radius > math.Sqrt(EatDistanceSq) {
+				radialGain = 0.42
+				tangentWeight = 0.55
+			}
 			radialError := desiredRadius - radius
-			desiredDX, desiredDY := normalize(tx+ux*radialError*0.15, ty+uy*radialError*0.15)
+			desiredDX, desiredDY := normalize(tx*tangentWeight+ux*radialError*radialGain, ty*tangentWeight+uy*radialError*radialGain)
 			org.DirX, org.DirY = steerToward(org.DirX, org.DirY, desiredDX, desiredDY, CircleTurn)
 			org.DirX, org.DirY = normalize(org.DirX, org.DirY)
 			org.Pos.X += org.DirX * CircleSpeed
