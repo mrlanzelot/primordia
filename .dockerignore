@@ -1,0 +1,12 @@
+.git
+.gitignore
+bin
+frontend/node_modules
+frontend/dist
+frontend/build
+backend/primordia
+README.md
+docs
+scripts
+CONTRIBUTING.md
+HEARTBEAT.md

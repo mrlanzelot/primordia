@@ -6,16 +6,16 @@ import { useWorldSocket } from './hooks/useWorldSocket';
 import { createStage, type StageBundle } from './pixi/stage';
 import './App.css';
 
-const DEFAULT_WS_URL = 'ws://127.0.0.1:8080/ws';
+const DEFAULT_WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/ws`;
 
 // postSpeedRate sends the selected simulation speed multiplier to the backend runtime control endpoint.
 async function postSpeedRate(rate: number): Promise<void> {
-  await fetch(`http://localhost:8080/speed?rate=${rate}`, { method: 'POST' });
+  await fetch(`/api/speed?rate=${rate}`, { method: 'POST' });
 }
 
 // postControlAction sends start/stop/restart commands to the backend runtime controls endpoint.
 async function postControlAction(action: 'start' | 'stop' | 'restart'): Promise<void> {
-  await fetch(`http://localhost:8080/control?action=${action}`, { method: 'POST' });
+  await fetch(`/api/control?action=${action}`, { method: 'POST' });
 }
 
 export default function App() {

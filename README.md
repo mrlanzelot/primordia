@@ -46,6 +46,64 @@ Backend binary output:
 
 - `bin/primordia-engine`
 
+## Docker Image
+
+The repository includes a production Docker image that packages:
+
+- the Go engine API/WebSocket server
+- the built frontend bundle (`frontend/dist`), served by the backend on `/`
+
+The container listens on port `8080`.
+
+Build the image locally:
+
+```bash
+make docker-build IMAGE_NAME=ghcr.io/<owner>/primordia IMAGE_TAG=latest
+```
+
+Build and push the image:
+
+```bash
+make docker-deploy IMAGE_NAME=ghcr.io/<owner>/primordia IMAGE_TAG=latest
+```
+
+Useful runtime routes:
+
+- `/` serves the frontend UI
+- `/health` and `/api/health` return health checks
+- `/api/ws` websocket stream
+- `/api/speed` and `/api/control` runtime controls
+
+Run the container on a Docker host:
+
+```bash
+make docker-run IMAGE_NAME=ghcr.io/<owner>/primordia IMAGE_TAG=latest CONTAINER_NAME=primordia HOST_PORT=8080
+```
+
+### Easiest/Safest (Single Docker Host, No Registry)
+
+If you only deploy to one host (for example `192.168.68.100`), the simplest safe flow is to stream the image over SSH.
+This avoids opening Docker TCP ports and avoids registry credentials/setup.
+
+```bash
+make docker-deploy-host REMOTE_USER=root REMOTE_HOST=192.168.68.100 HOST_PORT=8080
+```
+
+This command will:
+
+- build the image locally
+- transfer it to the host via SSH
+- load it into Docker on the host
+- restart the `primordia` container
+
+Or use compose:
+
+```bash
+IMAGE=ghcr.io/<owner>/primordia:latest make compose-up
+```
+
+For Proxmox deployment details (Docker VM and LXC), see `docs/DEPLOY_PROXMOX.md`.
+
 ## Folder Guide
 
 - `backend/`: Go simulation engine and WebSocket server.
